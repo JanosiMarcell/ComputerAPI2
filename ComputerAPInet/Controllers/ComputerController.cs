@@ -17,6 +17,7 @@ namespace ComputerAPInet.Controllers
         {
             this.computerContext = computerContext;
         }
+        //Megyek a berzebe a gyaszba minkbol vendeglato lesz
 
         [HttpPost]
         public async Task<ActionResult<Comp>> Post(CreateCompDto createCompDto)

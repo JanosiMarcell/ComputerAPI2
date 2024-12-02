@@ -3,6 +3,8 @@ using ComputerAPInet.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Asn1.Cmp;
+using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
 
 namespace ComputerAPInet.Controllers
 {
@@ -17,7 +19,6 @@ namespace ComputerAPInet.Controllers
         {
             this.computerContext = computerContext;
         }
-        //Megyek a berzebe a gyaszba minkbol vendeglato lesz
 
         [HttpPost]
         public async Task<ActionResult<Comp>> Post(CreateCompDto createCompDto)
@@ -44,7 +45,7 @@ namespace ComputerAPInet.Controllers
             return BadRequest();
         }
 
-        [HttpGet]
+        [HttpGet("all")]
         public async Task<ActionResult<Comp>> Get()
         {
             return Ok(await computerContext.Comps.ToListAsync());
@@ -55,7 +56,9 @@ namespace ComputerAPInet.Controllers
         {
             var comp = await computerContext.Comps.FirstOrDefaultAsync(comp => comp.Id == id);
             return comp != null ? Ok(comp) : NotFound(new { message = "Nincs ilyen találat." });
-        }
+        }        
+
+
 
         [HttpPut("{id}")]
         public async Task<ActionResult<Comp>> Put(Guid id, UpdateCompDto updateCompDto)
@@ -76,6 +79,18 @@ namespace ComputerAPInet.Controllers
             return NotFound(new { message = "Nincs ilyen találat." });
         }
 
+        [HttpGet("NumOfComp")]
+        public async Task<ActionResult<Comp>> GetNumOfComp()
+        {
+            var num = await computerContext.Comps.ToListAsync();
+
+            if (num != null)
+            {
+                return Ok(new { message = $"Az adatbázisban {num}db computer van." });
+            }
+            return BadRequest();
+        }
+
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(Guid id)
         {
@@ -89,6 +104,64 @@ namespace ComputerAPInet.Controllers
             await computerContext.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        [HttpGet("allcompwithos")]
+        public async Task<ActionResult<Comp>> getallcompwithos()
+        {
+            var allcomp = await computerContext.Comps.Select(cmp => new
+            {
+                cmp.Brand,
+                cmp.Type,
+                cmp.Os.Name
+            }).ToListAsync();
+            return Ok(allcomp);
+        }
+
+        [HttpGet("getallwithkeyword")]
+        public async Task<ActionResult<Comp>> getallwithkeyword(string keyword)
+        {
+            if (string.IsNullOrWhiteSpace(keyword))
+            {
+                return BadRequest("Keyword cannot be empty.");
+            }
+            else
+            {
+                var allwithsearchos = await computerContext.Comps.Where(cmp =>
+                cmp.Os.Name.Contains(keyword)).Select(cmp => new { cmp.Brand, cmp.Type, cmp.Os.Name }).ToListAsync();
+
+                if (allwithsearchos != null)
+                {
+                    return Ok(allwithsearchos);
+                }
+            }
+            return NotFound();
+        }
+
+        [HttpGet("biggestDisplay")]
+        public async Task<ActionResult<Comp>> getbiggestdisplay()
+        {
+            var biggestdisplay = await computerContext.Comps.MaxAsync(cmp => cmp.Display);
+            var cmpmaxdisplay = await computerContext.Comps.Where(cmp => cmp.Display == biggestdisplay)
+                .Select(cmp => new { cmp.Brand, cmp.Type, cmp.Display, cmp.Os.Name }).ToListAsync();
+            return Ok(cmpmaxdisplay);
+        }
+
+        [HttpGet("most recent")]
+        public async Task<ActionResult<Comp>> getrecent()
+        {
+            var mostrecent = await computerContext.Comps.MaxAsync(cmp => cmp.CreatedTime);
+            var cmprecent = await computerContext.Comps.Where(cmp => cmp.CreatedTime == mostrecent)
+                .Select(cmp => new {cmp}).ToListAsync();
+            return Ok(cmprecent);
+        }
+
+        [HttpGet("compwithlinux")]
+        public async Task<ActionResult<Comp>> getallwithlinux()
+        {
+            var compwithlinux = computerContext.Comps.Where(cmp =>
+                cmp.Os.Name.Contains("Linux")).Select(cmp => new { cmp.Brand, cmp.Type, cmp.Os.Name }).ToListAsync();
+            return Ok(compwithlinux);
         }
     }
 }
